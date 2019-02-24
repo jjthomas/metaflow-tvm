@@ -104,6 +104,7 @@ class Module(ModuleBase):
             object_format = fcompile.object_format
         else:
             object_format = "o"
+        object_format = "ll"
         path_obj = temp.relpath("lib." + object_format)
         self.save(path_obj)
         files = [path_obj]

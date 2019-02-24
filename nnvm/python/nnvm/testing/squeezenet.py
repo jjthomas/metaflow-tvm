@@ -30,13 +30,15 @@ from .. import symbol as sym
 from . utils import create_workload
 
 # Helpers
-def _make_fire(net, squeeze_channels, expand1x1_channels, expand3x3_channels):
+def _make_fire(net, squeeze_channels, expand1x1_channels, expand3x3_channels, compl=True):
+    bypass = _make_fire_conv(net, expand1x1_channels + expand3x3_channels, 1, 0) if compl else net
     net = _make_fire_conv(net, squeeze_channels, 1, 0)
 
     left = _make_fire_conv(net, expand1x1_channels, 1, 0)
     right = _make_fire_conv(net, expand3x3_channels, 3, 1)
     # NOTE : Assume NCHW layout here
     net = sym.concatenate(left, right, axis=1)
+    net = sym.elemwise_add(net, bypass)
 
     return net
 
@@ -66,15 +68,15 @@ def get_symbol(num_classes, version, **kwargs):
         net = sym.relu(net)
         net = sym.max_pool2d(net, pool_size=(3, 3), strides=(2, 2))
         net = _make_fire(net, 16, 64, 64)
-        net = _make_fire(net, 16, 64, 64)
+        net = _make_fire(net, 16, 64, 64, False)
         net = _make_fire(net, 32, 128, 128)
         net = sym.max_pool2d(net, pool_size=(3, 3), strides=(2, 2))
-        net = _make_fire(net, 32, 128, 128)
+        net = _make_fire(net, 32, 128, 128, False)
         net = _make_fire(net, 48, 192, 192)
-        net = _make_fire(net, 48, 192, 192)
+        net = _make_fire(net, 48, 192, 192, False)
         net = _make_fire(net, 64, 256, 256)
         net = sym.max_pool2d(net, pool_size=(3, 3), strides=(2, 2))
-        net = _make_fire(net, 64, 256, 256)
+        net = _make_fire(net, 64, 256, 256, False)
     else:
         net = sym.conv2d(net, channels=64, kernel_size=(3, 3), strides=(2, 2), padding=(1, 1))
         net = sym.relu(net)

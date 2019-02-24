@@ -40,6 +40,7 @@ to see the results.
 # Now return to python code. Import packages.
 
 import os
+import sys
 
 import numpy as np
 
@@ -72,11 +73,19 @@ def get_network(name, batch_size):
         net, params = nnvm.testing.vgg.get_workload(num_layers=n_layer, batch_size=batch_size)
     elif name == 'mobilenet':
         net, params = nnvm.testing.mobilenet.get_workload(batch_size=batch_size)
-    elif name == 'squeezenet_v1.1':
-        net, params = nnvm.testing.squeezenet.get_workload(batch_size=batch_size, version='1.1')
+    elif name == 'squeezenet_v1.0':
+        net, params = nnvm.testing.squeezenet.get_workload(batch_size=batch_size, version='1.0')
     elif name == 'inception_v3':
         input_shape = (1, 3, 299, 299)
         net, params = nnvm.testing.inception_v3.get_workload(batch_size=batch_size)
+    elif name == 'rnntc':
+        input_shape = (1, 1, 1, 1024 * 20)
+        output_shape = (1, 1024 * 21)
+        net, params = nnvm.testing.rnntc.get_workload(batch_size=batch_size)
+    elif name == 'nmt':
+        input_shape = (1, 1, 1, 1024 * 20)
+        output_shape = (1, 1024 * 23)
+        net, params = nnvm.testing.nmt.get_workload(batch_size=batch_size)
     elif name == 'custom':
         # an example for custom network
         from nnvm.testing import utils
@@ -105,7 +114,7 @@ def get_network(name, batch_size):
 target = tvm.target.cuda()
 
 #### TUNING OPTION ####
-network = 'resnet-18'
+network = sys.argv[1]
 log_file = "%s.log" % network
 dtype = 'float32'
 
@@ -113,8 +122,8 @@ tuning_option = {
     'log_filename': log_file,
 
     'tuner': 'xgb',
-    'n_trial': 2000,
-    'early_stopping': 600,
+    'n_trial': 50,
+    'early_stopping': 15,
 
     'measure_option': autotvm.measure_option(
         builder=autotvm.LocalBuilder(timeout=10),
@@ -195,6 +204,8 @@ def tune_tasks(tasks,
                            autotvm.callback.progress_bar(n_trial, prefix=prefix),
                            autotvm.callback.log_to_file(tmp_log_file)])
 
+    if not os.path.exists(tmp_log_file):
+        open(tmp_log_file, 'a')
     # pick best records to a cache file
     autotvm.record.pick_best(tmp_log_file, log_filename)
     os.remove(tmp_log_file)
@@ -209,7 +220,7 @@ def tune_and_evaluate(tuning_opt):
     net, params, input_shape, out_shape = get_network(network, batch_size=1)
     tasks = autotvm.task.extract_from_graph(net, target=target,
                                             shape={'data': input_shape}, dtype=dtype,
-                                            symbols=(nnvm.sym.conv2d,))
+                                            symbols=(nnvm.sym.conv2d, nnvm.sym.dense))
 
     # run tuning tasks
     print("Tuning...")
@@ -244,7 +255,7 @@ def tune_and_evaluate(tuning_opt):
 # We do not run the tuning in our webpage server since it takes too long.
 # Uncomment the following line to run it by yourself.
 
-# tune_and_evaluate(tuning_option)
+tune_and_evaluate(tuning_option)
 
 ######################################################################
 # Sample Output

@@ -38,7 +38,7 @@ def create_shared(output,
 
 
 def _linux_shared(output, objects, options, cc="g++"):
-    cmd = [cc]
+    cmd = ["/lfs/1/jjthomas/clang+llvm-7.0.0-x86_64-linux-gnu-ubuntu-16.04/bin/clang++"]
     cmd += ["-shared", "-fPIC"]
     if sys.platform == "darwin":
         cmd += ["-undefined", "dynamic_lookup"]
@@ -49,6 +49,9 @@ def _linux_shared(output, objects, options, cc="g++"):
         cmd += objects
     if options:
         cmd += options
+    # print(" ".join(cmd))
+    # for i, o in enumerate(objects):
+    #     subprocess.Popen(['cp', o, str(i) + '.' + o.split('.')[1]])
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (out, _) = proc.communicate()
